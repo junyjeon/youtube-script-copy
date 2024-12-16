@@ -2,8 +2,16 @@
   "manifest_version": 3,
   "name": "YouTube Script Copy",
   "version": "1.0",
-  "permissions": ["activeTab", "clipboardWrite", "scripting", "clipboardWrite"],
-  "host_permissions": ["https://*.youtube.com/*", "https://chat.openai.com/*"],
+  "permissions": [
+    "activeTab", 
+    "clipboardWrite", 
+    "clipboardRead",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://*.youtube.com/*", 
+    "https://chat.openai.com/*"
+  ],
   "content_scripts": [
     {
       "matches": ["*://www.youtube.com/watch*"],
