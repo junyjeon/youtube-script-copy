@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "YouTube Script Copy",
+  "version": "1.0",
+  "permissions": ["activeTab", "clipboardWrite", "scripting", "clipboardWrite"],
+  "host_permissions": ["https://*.youtube.com/*", "https://chat.openai.com/*"],
+  "content_scripts": [
+    {
+      "matches": ["*://www.youtube.com/watch*"],
+      "js": ["content.js"]
+    },
+    {
+      "matches": ["*://chat.openai.com/*"],
+      "js": ["chat_script.js"]
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html"
+  }
+}
