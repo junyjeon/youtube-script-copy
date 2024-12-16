@@ -1,0 +1,69 @@
+/* 성능 최적화된 CSS */
+:root {
+  --primary: #065fd4;
+  --white: #fff;
+  --radius: 4px;
+}
+
+/* Reset & Base */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Layout */
+body {
+  min-width: 320px;
+  overflow-x: hidden;
+  font: 14px/1.5 system-ui, -apple-system, sans-serif;
+}
+
+/* Components */
+button {
+  all: unset;
+  padding: .5rem 1rem;
+  background: var(--primary);
+  color: var(--white);
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-align: center;
+  transition: opacity .2s;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:hover {
+  opacity: .9;
+}
+
+button:active {
+  transform: scale(.98);
+}
+
+#chatFrame {
+  width: 100%;
+  height: 100vh;
+  border: 0;
+  display: block;
+}
+
+#buttonContainer {
+  display: grid;
+  gap: .5rem;
+  padding: .5rem;
+}
+
+/* 성능 최적화 */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* GPU 가속 */
+button, #chatFrame {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}

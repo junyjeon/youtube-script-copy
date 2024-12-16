@@ -15,11 +15,12 @@
   "content_scripts": [
     {
       "matches": ["*://www.youtube.com/watch*"],
-      "js": ["content.js"]
+      "js": ["youtube.js"],
+      "run_at": "document_end"
     },
     {
       "matches": ["*://chat.openai.com/*"],
-      "js": ["chat_script.js"]
+      "js": ["chatgpt.js"]
     }
   ],
   "background": {
@@ -27,5 +28,11 @@
   },
   "action": {
     "default_popup": "popup.html"
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["styles.css"],
+      "matches": ["<all_urls>"]
+    }
+  ]
 }

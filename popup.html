@@ -1,33 +1,32 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <title>Copy YouTube Script</title>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>YouTube Script Copy</title>
+    <link rel="stylesheet" href="styles.css">
     <style>
-      /* 패딩과 마진을 제거하여 iframe 주변의 여백을 없앱니다. */
-      body,
-      html {
-        margin: 0;
-        padding: 0;
-        overflow: hidden; /* 스크롤바가 생기지 않도록 처리 */
-      }
-      /* iframe 스타일을 조정합니다. */
-      #chatFrame {
-        width: 100%; /* 전체 너비를 사용하도록 설정 */
-        height: 100vh; /* 전체 높이를 사용하도록 설정 */
-        border: none; /* 테두리 제거 */
-      }
+        body, html {
+            width: 400px;
+            height: 600px;
+            margin: 0;
+            padding: 0;
+        }
+        #chatFrameContainer {
+            width: 100%;
+            height: 500px;
+        }
+        #buttonContainer {
+            padding: 10px;
+        }
     </style>
-  </head>
-  <body>
-    <iframe
-      id="chatFrame"
-      src="https://chat.openai.com"
-      style="width: 400px; height: 500px"
-    ></iframe>
-    <button id="copyButton">Copy Script</button>
-    <button id="copyTextOnlyButton">Copy Text Only</button>
-    <!-- 버튼을 동적으로 추가하기 위한 컨테이너 -->
-    <div id="buttonContainer"></div>
+</head>
+<body>
+    <div id="chatFrameContainer"></div>
+    <div id="buttonContainer">
+        <button id="copyButton">Copy Script</button>
+        <button id="copyTextOnlyButton">Copy Text Only</button>
+    </div>
     <script src="popup.js"></script>
-  </body>
+</body>
 </html>

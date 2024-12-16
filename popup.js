@@ -1,103 +1,141 @@
-document.getElementById("copyButton").addEventListener("click", () => {
-  console.log("copyButton clicked");
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    chrome.scripting.executeScript(
-      {
-        target: { tabId: tabs[0].id },
-        files: ["content.js"],
-      },
-      () => {
-        console.log("content.js executed");
-      }
-    );
-  });
-});
+// popup.js
 
-document.getElementById("copyTextOnlyButton").addEventListener("click", () => {
-  console.log("copyTextOnlyButton clicked");
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    chrome.scripting.executeScript(
-      {
-        target: { tabId: tabs[0].id },
-        files: ["content_text_only.js"],
-      },
-      () => {
-        console.log("content_text_only.js executed");
-      }
-    );
-  });
-});
-
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.subtitles) {
-    navigator.clipboard
-      .writeText(message.subtitles)
-      .then(() => {
-        console.log("자막이 클립보드에 복사되었습니다.");
-      })
-      .catch((err) => {
-        console.error("클립보드에 복사하는데 실패했습니다.", err);
-      });
+// DOM 요소 캐싱을 위한 상수
+const DOM = {
+  elements: null,
+  init() {
+    this.elements = {
+      container: document.getElementById("buttonContainer"),
+      copyBtn: document.getElementById("copyButton"),
+      textOnlyBtn: document.getElementById("copyTextOnlyButton")
+    };
+    return Object.values(this.elements).every(Boolean);
   }
-});
+};
 
-document.addEventListener("DOMContentLoaded", () => {
-  const textLength = 15000; // 예시로 15000자를 사용, 실제로는 복사할 텍스트 길이를 사용해야 함
-  // 복사할 텍스트 길이에 따라 버튼 개수 결정
-  if (textLength > 15000) {
-    const buttonContainer = document.getElementById("buttonContainer");
-    const numberOfButtons = Math.ceil(textLength / 15000);
-    for (let i = 0; i < numberOfButtons; i++) {
-      const button = document.createElement("button");
-      button.textContent = `Copy Part ${i + 1}`;
-      button.addEventListener("click", () => {
-        // 각 버튼에 해당하는 텍스트 복사 로직 추가
-        chrome.tabs.query(
-          { active: true, currentWindow: true },
-          function (tabs) {
-            chrome.scripting.executeScript({
-              target: { tabId: tabs[0].id },
-              function: copyPartText,
-              args: [i], // 현재 클릭된 버튼의 인덱스를 전달
-            });
-          }
-        );
-        console.log(`Part ${i + 1} copied`);
-      });
-      buttonContainer.appendChild(button);
-    }
-  } else {
-    // 15000자를 넘지 않는 경우, 기존의 'Copy Script'와 'Copy Text Only' 버튼만 사용
-    // 이 경우 추가적인 동적 버튼 생성 로직은 필요 없음
-    console.log("No need for additional buttons");
-  }
-  for (let i = 0; i < numberOfButtons; i++) {
+// 유틸리티 함수
+const utils = {
+  async getCurrentTab() {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    return tab;
+  },
+  
+  createButton(index) {
     const button = document.createElement("button");
-    button.textContent = `Copy Part ${i + 1}`;
-    // IIFE를 사용하여 각 버튼에 대한 정확한 인덱스를 캡처
-    (function (index) {
-      button.addEventListener("click", () => {
-        chrome.tabs.query(
-          { active: true, currentWindow: true },
-          function (tabs) {
-            chrome.tabs.sendMessage(tabs[0].id, {
-              action: "copyPartText",
-              partIndex: index,
-            });
-          }
-        );
-      });
-    })(i);
-    buttonContainer.appendChild(button);
+    button.textContent = `Copy Part ${index + 1}`;
+    button.dataset.partIndex = index;
+    return button;
   }
-});
+};
 
-// content.js에서 호출될 함수
-function copyPartText(partIndex) {
-  // 이 함수는 content.js에서 구현될 것임
+// 핵심 기능 클래스
+class PopupManager {
+  constructor() {
+    this.dom = DOM;
+    this.initialized = false;
+  }
+
+  async init() {
+    if (!this.dom.init()) {
+      console.error("Required elements not found");
+      return;
+    }
+
+    this.setupEventListeners();
+    this.setupMessageListener();
+    this.initialized = true;
+  }
+
+  setupEventListeners() {
+    const { container, copyBtn, textOnlyBtn } = this.dom.elements;
+
+    // 이벤트 위임
+    container.addEventListener('click', this.handleButtonClick.bind(this));
+    
+    // 주요 버튼 이벤트
+    copyBtn.addEventListener('click', () => this.executeScript('youtube.js'));
+    textOnlyBtn.addEventListener('click', () => this.executeScript('text_only.js'));
+  }
+
+  setupMessageListener() {
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        if (message.subtitles) {
+            navigator.clipboard.writeText(message.subtitles)
+                .then(() => console.log("Copied to clipboard"))
+                .catch(err => console.error("Copy failed:", err));
+        }
+        return true;
+    });
+  }
+
+  async handleButtonClick(e) {
+    if (!e.target.matches('button') || !e.target.dataset.partIndex) return;
+    
+    const index = parseInt(e.target.dataset.partIndex);
+    await this.sendCopyRequest(index);
+  }
+
+  async executeScript(scriptPath) {
+    const tab = await utils.getCurrentTab();
+  
+    // 여기서 미리 messageListener 등록
+    const subtitles = await new Promise((resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        chrome.runtime.onMessage.removeListener(messageListener);
+        reject(new Error('Timeout: No subtitles received'));
+      }, 10000);
+  
+      function messageListener(message) {
+        if (message.type === 'subtitlesReady' && message.subtitles) {
+          clearTimeout(timeoutId);
+          chrome.runtime.onMessage.removeListener(messageListener);
+          resolve(message.subtitles);
+        }
+      }
+  
+      chrome.runtime.onMessage.addListener(messageListener);
+  
+      // 리스너 등록 끝나고 나서 스크립트 실행
+      chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: [scriptPath],
+      });
+    });
+  
+    // 자막 로드 완료 후 복사
+    await navigator.clipboard.writeText(subtitles);
+    console.log('Subtitles copied to clipboard');
+  }
+
+  async sendCopyRequest(partIndex) {
+    try {
+      const tab = await utils.getCurrentTab();
+      await chrome.tabs.sendMessage(tab.id, {
+        action: "copyPartText",
+        partIndex
+      });
+    } catch (err) {
+      console.error('Copy request failed:', err);
+    }
+  }
+
+  createPartButtons(textLength = 15000) {
+    if (!this.initialized) return;
+
+    const { container } = this.dom.elements;
+    const numberOfButtons = Math.ceil(textLength / 15000);
+    const fragment = document.createDocumentFragment();
+
+    for (let i = 0; i < numberOfButtons; i++) {
+      fragment.appendChild(utils.createButton(i));
+    }
+
+    container.appendChild(fragment);
+  }
 }
 
-// 버튼 클릭 이벤트 리스너 내부
-chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-  chrome.tabs.sendMessage(tabs[0].id, { action: "copyPartText", partIndex: i });
+// 초기화 및 실행
+document.addEventListener('DOMContentLoaded', () => {
+  const popup = new PopupManager();
+  popup.init().catch(console.error);
 });
