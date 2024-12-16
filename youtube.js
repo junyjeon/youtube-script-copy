@@ -20,33 +20,35 @@
     observer: null,
   };
 
+  function sendMessage(data) {
+    chrome.runtime.sendMessage(data);
+  }
+
   function processTranscriptSegments(segments) {
-    state.subtitles = Array.from(segments).map((segment) => ({
-      time: segment.querySelector(SELECTORS.SEGMENT_TIMESTAMP).textContent.trim(),
-      text: segment.querySelector(SELECTORS.SEGMENT_TEXT).textContent.trim(),
-    }));
+    const subtitles = [];
+    for (const segment of segments) {
+      const timeEl = segment.querySelector(SELECTORS.SEGMENT_TIMESTAMP);
+      const textEl = segment.querySelector(SELECTORS.SEGMENT_TEXT);
+      if (timeEl && textEl) {
+        subtitles.push(`${timeEl.textContent.trim()} ${textEl.textContent.trim()}`);
+      }
+    }
+    state.subtitles = subtitles;
+    sendMessage({ type: 'subtitlesReady', subtitles: subtitles.join("\n") });
+  }
 
-    const subtitlesText = state.subtitles
-      .map((sub) => `${sub.time} ${sub.text}`)
-      .join("\n");
-
-    chrome.runtime.sendMessage({ type: 'subtitlesReady', subtitles: subtitlesText });
+  function onTranscriptMutations(mutations, obs, resolve) {
+    const segments = document.querySelectorAll(SELECTORS.TRANSCRIPT_SEGMENTS);
+    if (segments.length > 0) {
+      processTranscriptSegments(segments);
+      obs.disconnect();
+      resolve();
+    }
   }
 
   function observeTranscriptChanges(container, resolve) {
-    if (state.observer) {
-      state.observer.disconnect();
-    }
-
-    state.observer = new MutationObserver(() => {
-      const segments = document.querySelectorAll(SELECTORS.TRANSCRIPT_SEGMENTS);
-      if (segments.length > 0) {
-        processTranscriptSegments(segments);
-        state.observer.disconnect();
-        resolve(); // 자막 로딩 완료 시 resolve
-      }
-    });
-
+    if (state.observer) state.observer.disconnect();
+    state.observer = new MutationObserver((mutations, obs) => onTranscriptMutations(mutations, obs, resolve));
     state.observer.observe(container, { childList: true, subtree: true });
   }
 
@@ -54,13 +56,13 @@
     return new Promise((resolve, reject) => {
       const primaryButton = document.getElementById(SELECTORS.PRIMARY_BUTTON);
       if (!primaryButton) return reject("Button container not found");
-  
+
       const scriptButton = primaryButton.querySelector(SELECTORS.SCRIPT_BUTTON);
       if (!scriptButton) return reject("Script button not found");
-  
+
       scriptButton.click();
-  
-      // 패널 로딩을 위해 약간의 대기 시간 주기 (예: 500ms)
+
+      // 패널 로딩 여유 시간
       setTimeout(() => {
         const transcriptContainer = document.evaluate(
           XPATH.TRANSCRIPT_CONTAINER,
@@ -69,35 +71,28 @@
           XPathResult.FIRST_ORDERED_NODE_TYPE,
           null
         ).singleNodeValue;
-  
+
         if (!transcriptContainer) return reject("Transcript container not found");
-  
+
         const segments = document.querySelectorAll(SELECTORS.TRANSCRIPT_SEGMENTS);
         if (segments.length > 0) {
           processTranscriptSegments(segments);
-          resolve(); // 즉시 로드된 경우 resolve
+          resolve();
         } else {
           observeTranscriptChanges(transcriptContainer, resolve);
         }
-      }, 500); // 여기서 500ms 딜레이 주는 예시
+      }, 500);
     });
   }
 
   function handleCopyRequest(partIndex) {
     if (!state.subtitles.length) return;
-
-    const text = state.subtitles
-      .map((sub) => `${sub.time} ${sub.text}`)
-      .join("\n");
-
-    const partText = text.substring(
+    const fullText = state.subtitles.join("\n");
+    const partText = fullText.substring(
       partIndex * COPY_CONFIG.PART_SIZE,
       (partIndex + 1) * COPY_CONFIG.PART_SIZE
     );
-
-    navigator.clipboard.writeText(partText)
-      .then(() => console.log(`Part ${partIndex + 1} copied`))
-      .catch((err) => console.error("Copy failed:", err));
+    navigator.clipboard.writeText(partText).catch(err => console.error("Copy failed:", err));
   }
 
   chrome.runtime.onMessage.addListener((message) => {
@@ -106,11 +101,9 @@
     }
   });
 
-  initialize()
-    .then(() => {
-      console.log("Initialization complete");
-    })
-    .catch((error) => {
-      console.error("Initialization failed:", error);
-    });
+  initialize().then(() => {
+    console.log("Initialization complete");
+  }).catch(error => {
+    console.error("Initialization failed:", error);
+  });
 })();

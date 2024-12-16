@@ -1,69 +1,64 @@
-/* 성능 최적화된 CSS */
 :root {
-  --primary: #065fd4;
-  --white: #fff;
+  --accent: #777;   /* 부드러운 블루톤 액센트 컬러 */
+  --white: #ffffff;
+  --gray: #777;
+  --font-family: system-ui, -apple-system, sans-serif;
+  --transition: 0.2s ease;
   --radius: 4px;
 }
 
-/* Reset & Base */
-*, *::before, *::after {
+html, body {
   margin: 0;
   padding: 0;
-  box-sizing: border-box;
+  width: 250px;
+  height: 42px;
+  background: #f9f9f9;
+  font-family: var(--font-family);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-/* Layout */
-body {
-  min-width: 320px;
-  overflow-x: hidden;
-  font: 14px/1.5 system-ui, -apple-system, sans-serif;
+/* 버튼 컨테이너: 가로 정렬 */
+#buttonContainer {
+  display: flex;
+  gap: 0.5rem;
 }
 
-/* Components */
+/* 공통 버튼 스타일 */
 button {
   all: unset;
-  padding: .5rem 1rem;
-  background: var(--primary);
-  color: var(--white);
-  border-radius: var(--radius);
   cursor: pointer;
-  text-align: center;
-  transition: opacity .2s;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 500;
+  transition: background var(--transition), transform var(--transition);
   user-select: none;
   -webkit-tap-highlight-color: transparent;
+  text-align: center;
 }
 
-button:hover {
-  opacity: .9;
+/* 첫 번째 버튼: 메인 액센트 컬러 사용 */
+#copyButton {
+  background: var(--accent);
+  color: var(--white);
+}
+#copyButton:hover {
+  background: #666;
+}
+#copyButton:active {
+  transform: scale(0.98);
 }
 
-button:active {
-  transform: scale(.98);
+/* 두 번째 버튼: 중립적 회색 컬러 */
+#copyTextOnlyButton {
+  background: var(--gray);
+  color: var(--white);
 }
-
-#chatFrame {
-  width: 100%;
-  height: 100vh;
-  border: 0;
-  display: block;
+#copyTextOnlyButton:hover {
+  background: #666;
 }
-
-#buttonContainer {
-  display: grid;
-  gap: .5rem;
-  padding: .5rem;
-}
-
-/* 성능 최적화 */
-@media (prefers-reduced-motion: reduce) {
-  * {
-    animation: none !important;
-    transition: none !important;
-  }
-}
-
-/* GPU 가속 */
-button, #chatFrame {
-  transform: translateZ(0);
-  backface-visibility: hidden;
+#copyTextOnlyButton:active {
+  transform: scale(0.98);
 }
