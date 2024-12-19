@@ -1,83 +1,107 @@
 // text_only.js
 (function () {
-  function extractTranscript() {
-    const SELECTORS = {
-      PRIMARY_BUTTON: "primary-button",
-      SCRIPT_BUTTON: ".yt-spec-button-shape-next",
-      TRANSCRIPT_SEGMENTS: "ytd-transcript-segment-renderer",
-      SEGMENT_TEXT: ".segment-text",
-    };
+  function sendMessage(message) {
+    chrome.runtime.sendMessage(message);
+  }
 
-    const XPATH = {
-      TRANSCRIPT_CONTAINER: '//*[@id="panels"]/ytd-engagement-panel-section-list-renderer[5]',
-    };
+  function processSegments(segments) {
+    const subtitles = Array.from(segments)
+      .map(segment => {
+        const textEl = segment.querySelector(".segment-text");
+        if (!textEl) return null;
+        const text = textEl.textContent.trim();
+        return text || null;
+      })
+      .filter(Boolean);
 
-    function sendMessage(message) {
-      chrome.runtime.sendMessage(message);
-    }
+    // 공백으로 자막 연결
+    sendMessage({ type: 'subtitlesReady', subtitles: subtitles.join(" ") });
+  }
 
-    function processSegments(segments) {
-      // 타임스탬프 사용 X, 텍스트만 추출
-      const subtitles = Array.from(segments)
-        .map(segment => {
-          const textEl = segment.querySelector(SELECTORS.SEGMENT_TEXT);
-          if (!textEl) return null;
-          const text = textEl.textContent.trim();
-          return text || null;
-        })
-        .filter(Boolean);
+  function waitForElement(conditionFn, timeout = 10000) {
+    return new Promise((resolve, reject) => {
+      const start = Date.now();
 
-      // 개행 대신 공백으로 구분
-      sendMessage({ type: 'subtitlesReady', subtitles: subtitles.join(" ") });
-    }
-
-    function observeTranscriptChanges(container) {
       const observer = new MutationObserver(() => {
-        const segments = document.querySelectorAll(SELECTORS.TRANSCRIPT_SEGMENTS);
-        if (segments.length > 0) {
-          processSegments(segments);
+        if (conditionFn()) {
           observer.disconnect();
+          resolve();
+        } else if (Date.now() - start >= timeout) {
+          observer.disconnect();
+          reject(new Error("Timeout: Element not found"));
         }
       });
 
-      observer.observe(container, { childList: true, subtree: true });
-    }
+      observer.observe(document.documentElement, { childList: true, subtree: true });
 
-    const primaryButtonContainer = document.getElementById(SELECTORS.PRIMARY_BUTTON);
-    if (!primaryButtonContainer) {
-      sendMessage({ type: 'subtitlesReady', subtitles: "" });
-      return;
-    }
+      // 초기 체크
+      if (conditionFn()) {
+        observer.disconnect();
+        resolve();
+      } else {
+        setTimeout(() => {
+          observer.disconnect();
+          reject(new Error("Timeout: Element not found"));
+        }, timeout);
+      }
+    });
+  }
 
-    const scriptButton = primaryButtonContainer.querySelector(SELECTORS.SCRIPT_BUTTON);
-    if (!scriptButton) {
-      sendMessage({ type: 'subtitlesReady', subtitles: "" });
-      return;
-    }
-
-    scriptButton.click();
-
-    const transcriptContainer = document.evaluate(
-      XPATH.TRANSCRIPT_CONTAINER,
-      document,
-      null,
-      XPathResult.FIRST_ORDERED_NODE_TYPE,
-      null
-    ).singleNodeValue;
-
-    if (!transcriptContainer) {
-      sendMessage({ type: 'subtitlesReady', subtitles: "" });
-      return;
-    }
-
-    const segments = document.querySelectorAll(SELECTORS.TRANSCRIPT_SEGMENTS);
-    if (segments.length > 0) {
-      processSegments(segments);
+  function extractTranscript() {
+    // 페이지 완전 로딩 대기
+    if (document.readyState !== 'complete') {
+      document.addEventListener('readystatechange', function onReady() {
+        if (document.readyState === 'complete') {
+          document.removeEventListener('readystatechange', onReady);
+          startExtract();
+        }
+      });
     } else {
-      observeTranscriptChanges(transcriptContainer);
+      startExtract();
+    }
+
+    function startExtract() {
+      const PRIMARY_BUTTON = document.getElementById("primary-button");
+      if (!PRIMARY_BUTTON) {
+        sendMessage({ type: 'subtitlesReady', subtitles: "" });
+        return;
+      }
+
+      const scriptButton = PRIMARY_BUTTON.querySelector(".yt-spec-button-shape-next");
+      if (!scriptButton) {
+        sendMessage({ type: 'subtitlesReady', subtitles: "" });
+        return;
+      }
+
+      // 자막 패널 열기
+      scriptButton.click();
+
+      const panelCondition = () => {
+        const panel = document.querySelector('ytd-engagement-panel-section-list-renderer[visibility="ENGAGEMENT_PANEL_VISIBILITY_EXPANDED"]');
+        return panel && document.evaluate(
+          '//*[@id="panels"]/ytd-engagement-panel-section-list-renderer[5]',
+          document,
+          null,
+          XPathResult.FIRST_ORDERED_NODE_TYPE,
+          null
+        ).singleNodeValue;
+      };
+
+      waitForElement(panelCondition, 10000)
+        .then(() => {
+          // 패널 뜬 뒤 세그먼트 등장 대기
+          const segmentsCondition = () => document.querySelectorAll("ytd-transcript-segment-renderer").length > 0;
+          return waitForElement(segmentsCondition, 10000);
+        })
+        .then(() => {
+          const segments = document.querySelectorAll("ytd-transcript-segment-renderer");
+          processSegments(segments);
+        })
+        .catch(() => {
+          sendMessage({ type: 'subtitlesReady', subtitles: "" });
+        });
     }
   }
 
-  // 타임스탬프 없이 텍스트만 추출
   extractTranscript();
 })();
