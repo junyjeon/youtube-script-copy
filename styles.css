@@ -1,64 +1,41 @@
+/* styles.css */
 :root {
-  --accent: #777;   /* 부드러운 블루톤 액센트 컬러 */
-  --white: #ffffff;
   --gray: #777;
-  --font-family: system-ui, -apple-system, sans-serif;
-  --transition: 0.2s ease;
-  --radius: 4px;
+  --white: #fff;
+  --success-bg: #A3D9A5; /* 파스텔 그린 */
 }
 
 html, body {
   margin: 0;
   padding: 0;
   width: 250px;
-  height: 42px;
-  background: #f9f9f9;
-  font-family: var(--font-family);
+  height: 50px;
+  background: var(--gray);
+  font-family: sans-serif;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-/* 버튼 컨테이너: 가로 정렬 */
 #buttonContainer {
   display: flex;
   gap: 0.5rem;
 }
 
-/* 공통 버튼 스타일 */
 button {
   all: unset;
+  display: inline-block;
   cursor: pointer;
-  padding: 0.5rem 1rem;
-  border-radius: var(--radius);
-  font-size: 14px;
-  font-weight: 500;
-  transition: background var(--transition), transform var(--transition);
-  user-select: none;
-  -webkit-tap-highlight-color: transparent;
-  text-align: center;
-}
-
-/* 첫 번째 버튼: 메인 액센트 컬러 사용 */
-#copyButton {
-  background: var(--accent);
-  color: var(--white);
-}
-#copyButton:hover {
-  background: #666;
-}
-#copyButton:active {
-  transform: scale(0.98);
-}
-
-/* 두 번째 버튼: 중립적 회색 컬러 */
-#copyTextOnlyButton {
+  font-size: 13px;
   background: var(--gray);
   color: var(--white);
+  text-align: center;
+  min-width: 90px; /* 버튼 안의 가장 긴 텍스트를 기준으로 여유롭게 설정 */
 }
-#copyTextOnlyButton:hover {
-  background: #666;
-}
-#copyTextOnlyButton:active {
-  transform: scale(0.98);
+
+button.success {
+  background: var(--success-bg);
+  padding: 0.3rem 0.6rem;
+  border-radius: 3px;
+  color: #000;
 }

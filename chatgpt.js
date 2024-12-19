@@ -1,3 +1,4 @@
+// chatgpt.js
 document.addEventListener("DOMContentLoaded", async () => {
   try {
     // 클립보드 내용 가져오기

@@ -1,4 +1,6 @@
-(() => {
+// youtube.js
+
+(function () {
   const SELECTORS = {
     PRIMARY_BUTTON: "primary-button",
     SCRIPT_BUTTON: ".yt-spec-button-shape-next",

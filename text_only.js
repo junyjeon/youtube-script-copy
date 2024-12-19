@@ -1,5 +1,5 @@
+// text_only.js
 (function () {
-  // 자막 추출 관련 상수 정의
   const SELECTORS = {
     PRIMARY_BUTTON: "primary-button",
     SCRIPT_BUTTON: ".yt-spec-button-shape-next",
@@ -11,75 +11,45 @@
     TRANSCRIPT_CONTAINER: '//*[@id="panels"]/ytd-engagement-panel-section-list-renderer[5]'
   };
 
-  /**
-   * 자막 세그먼트 처리 함수
-   * @param {NodeList} transcriptSegments - 자막 세그먼트 요소들
-   */
-  function processTranscriptSegments(transcriptSegments) {
-    const subtitlesText = Array.from(transcriptSegments)
-      .map(segment => segment.querySelector(SELECTORS.SEGMENT_TEXT).textContent.trim())
+  function processTranscriptSegments(segments) {
+    const subtitlesText = Array.from(segments)
+      .map(segment => segment.querySelector(SELECTORS.SEGMENT_TEXT)?.textContent.trim() || "")
+      .filter(Boolean)
       .join("\n");
 
-    sendMessage({
-      status: 'success',
-      subtitles: subtitlesText
-    });
+    sendMessage({ type: 'subtitlesReady', subtitles: subtitlesText });
   }
 
-  /**
-   * DOM 변화 감지 함수
-   * @param {Element} container - 감시할 컨테이너 요소
-   */
   function observeTranscriptChanges(container) {
-    const observer = new MutationObserver((mutations, obs) => {
-      const transcriptSegments = document.querySelectorAll(SELECTORS.TRANSCRIPT_SEGMENTS);
-      if (transcriptSegments.length > 0) {
-        processTranscriptSegments(transcriptSegments);
-        obs.disconnect();
+    const observer = new MutationObserver(() => {
+      const segments = document.querySelectorAll(SELECTORS.TRANSCRIPT_SEGMENTS);
+      if (segments.length > 0) {
+        processTranscriptSegments(segments);
+        observer.disconnect();
       }
     });
 
-    observer.observe(container, {
-      childList: true,
-      subtree: true
-    });
+    observer.observe(container, { childList: true, subtree: true });
   }
 
-  /**
-   * 에러 처리 함수
-   * @param {string} message - 에러 메시지
-   */
-  function handleError(message) {
-    console.error(message);
-    sendMessage({
-      status: 'error',
-      message: message
-    });
-  }
-
-  /**
-   * 메시지 전송 함수
-   * @param {Object} message - 전송할 메시지 객체
-   */
   function sendMessage(message) {
     chrome.runtime.sendMessage(message);
   }
 
-  // 메인 실행 로직
+  // 실행 로직 시작
   const primaryButtonContainer = document.getElementById(SELECTORS.PRIMARY_BUTTON);
-  
   if (!primaryButtonContainer) {
-    handleError("버튼 컨테이너를 찾을 수 없습니다.");
+    sendMessage({ type: 'subtitlesReady', subtitles: "" });
     return;
   }
 
   const scriptButton = primaryButtonContainer.querySelector(SELECTORS.SCRIPT_BUTTON);
-
   if (!scriptButton) {
-    handleError("자막 표시 버튼을 찾을 수 없습니다.");
+    sendMessage({ type: 'subtitlesReady', subtitles: "" });
     return;
   }
 
+  // 자막 패널 열기
   scriptButton.click();
 
   const transcriptContainer = document.evaluate(
@@ -91,15 +61,16 @@
   ).singleNodeValue;
 
   if (!transcriptContainer) {
-    handleError("자막 컨테이너를 찾을 수 없습니다.");
+    sendMessage({ type: 'subtitlesReady', subtitles: "" });
     return;
   }
 
-  const transcriptSegments = document.querySelectorAll(SELECTORS.TRANSCRIPT_SEGMENTS);
-  if (transcriptSegments.length > 0) {
-    processTranscriptSegments(transcriptSegments);
-    return;
+  const segments = document.querySelectorAll(SELECTORS.TRANSCRIPT_SEGMENTS);
+  if (segments.length > 0) {
+    // 자막이 이미 로딩되었다면 바로 처리
+    processTranscriptSegments(segments);
+  } else {
+    // 아직 로딩되지 않았다면 변화 관찰
+    observeTranscriptChanges(transcriptContainer);
   }
-
-  observeTranscriptChanges(transcriptContainer);
 })();
