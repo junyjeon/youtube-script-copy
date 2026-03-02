@@ -3,13 +3,14 @@
   --gray: #777;
   --white: #fff;
   --success-bg: #A3D9A5; /* 파스텔 그린 */
+  --error-bg: #F4A6A0; /* 파스텔 레드 */
 }
 
 html, body {
   margin: 0;
   padding: 0;
-  width: 250px;
-  height: 50px;
+  min-width: 250px;
+  min-height: 50px;
   background: var(--gray);
   font-family: sans-serif;
   display: flex;
@@ -35,6 +36,13 @@ button {
 
 button.success {
   background: var(--success-bg);
+  padding: 0.3rem 0.6rem;
+  border-radius: 3px;
+  color: #000;
+}
+
+button.error {
+  background: var(--error-bg);
   padding: 0.3rem 0.6rem;
   border-radius: 3px;
   color: #000;
